@@ -36,7 +36,7 @@ class SDCarto(GeoAxes):
         if "map_projection" in kwargs:
             map_projection = kwargs.pop("map_projection")
         else:
-            map_projection = cartopy.crs.NorthPolarStereo()
+            map_projection = ccrs.Orthographic(-90, 50)
             print(
                 "map_projection keyword not set, setting it to cartopy.crs.NorthPolarStereo()"
             )

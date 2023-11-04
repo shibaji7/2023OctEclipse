@@ -24,6 +24,7 @@ import datetime as dt
 import matplotlib.dates as mdates
 import numpy as np
 from pysolar.solar import get_altitude_fast
+import eclipse_util as eutil
 
 
 def get_gridded_parameters(
@@ -90,7 +91,8 @@ class RTI(object):
         cmap="jet",
         cbar=True,
         alpha=1,
-        overlay_za=False,
+        za=False,
+        oclt=False
     ):
         df = radar.df.copy()
         df = df[df.bmnum == beam]
@@ -124,8 +126,14 @@ class RTI(object):
         if title:
             ax.set_title(title, loc="left", fontdict={"fontweight": "bold"})
         ax.set_ylim(self.ylim)
-        if overlay_za:
+        if za:
             self.overlay_sza(
+                radar.fov, ax, beam, [0, self.nGates],
+                df.rsep.iloc[0], df.frang.iloc[0],
+                yscale
+            )
+        if oclt:
+            self.overlay_oclt(
                 radar.fov, ax, beam, [0, self.nGates],
                 df.rsep.iloc[0], df.frang.iloc[0],
                 yscale
@@ -140,7 +148,6 @@ class RTI(object):
             self.drange[0] + dt.timedelta(minutes=i)
             for i in range(int((self.drange[1] - self.drange[0]).total_seconds() / 60))
         ]
-        R = 6378.1
         gates = np.arange(gate_range[0], gate_range[1])
         dn_grid = np.zeros((len(times), len(gates)))
         for i, d in enumerate(times):
@@ -162,6 +169,33 @@ class RTI(object):
             edgecolors="None",
             cmap="gray_r",
             vmax=2,
+            vmin=0,
+            shading="nearest",
+            alpha=0.3,
+        )
+        return
+
+    def overlay_oclt(self, fov, ax, beam, gate_range, rsep, frang, yscale):
+        times = [
+            self.drange[0] + dt.timedelta(minutes=i)
+            for i in range(int((self.drange[1] - self.drange[0]).total_seconds() / 60))
+        ]
+        gates = np.arange(gate_range[0], gate_range[1])
+        gdlat, glong = [], []
+        for j, g in enumerate(gates):
+            gdlat.append(fov[0][g, beam])
+            glong.append(fov[1][g, beam])
+        shadow = eutil.helper_rti_get_eclipse(times, gdlat, glong)        
+        gates = frang + (rsep * gates)
+        times, gates = np.meshgrid(times, gates)
+        ax.pcolormesh(
+            times.T,
+            gates.T,
+            shadow,
+            lw=0.01,
+            edgecolors="None",
+            cmap="Blues",
+            vmax=1,
             vmin=0,
             shading="nearest",
             alpha=0.3,
